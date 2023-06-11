@@ -43,6 +43,7 @@ end
 -- Check if a variable is declared in outer scope
 ---@param node TSNode: the node of type Identifier representing the variable
 ---@return boolean
+---@diagnostic disable-next-line: unused-local
 local function is_declared_in_outer_scope(node)
   return true
 end
