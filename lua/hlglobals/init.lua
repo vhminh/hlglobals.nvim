@@ -54,7 +54,7 @@ local function hl_node(bufnr, node)
   local start_row, start_col = node:start()
   local end_row, end_col = node:end_()
   vim.api.nvim_buf_set_extmark(bufnr, ns, start_row, start_col, {
-    hl_group = 'errormsg',
+    hl_group = M.opts.hl_group,
     end_row = end_row,
     end_col = end_col,
     priority = vim.highlight.priorities.user,
