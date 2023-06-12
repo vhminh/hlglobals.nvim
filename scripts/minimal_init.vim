@@ -1,5 +1,7 @@
-set runtimepath=~/.local/share/nvim/site/pack/vendor/start
-set runtimepath=.
+set runtimepath+=.
+set runtimepath+=../plenary.nvim/
+set runtimepath+=../tree-sitter-lua/
 
 runtime! plugin/plenary.vim
+runtime! plugin/ts_lua.vim
 
