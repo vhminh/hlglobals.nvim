@@ -1,10 +1,13 @@
-root = true
+root = false
 
 [*]
 end_of_line = lf
 insert_final_newline = true
-
-[*.lua, *.scm]
 indent_style = space
+
+[*.go]
+indent_size = 4
+
+[*.lua, *.scala]
 indent_size = 2
 
