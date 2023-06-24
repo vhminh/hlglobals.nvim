@@ -47,8 +47,8 @@ local function setup_treesitter(languages)
   require('nvim-treesitter.configs').setup({
     ensure_installed = languages,
   })
+  require('nvim-treesitter.install').ensure_installed_sync()
 end
-require('nvim-treesitter.install').ensure_installed_sync()
 
 -- Mock a lsp client based on the source code
 ---@param name string name of the lsp, should be unique
