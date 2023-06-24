@@ -28,8 +28,6 @@ local find_variables = function(bufnr)
           -- treesitter Identifier node
           local row, col = node:start()
           local tokens = vim.lsp.semantic_tokens.get_at_pos(bufnr, row, col)
-          print(vim.inspect(vim.treesitter.get_node_text(node, bufnr)))
-          print(vim.inspect(tokens))
           if tokens ~= nil and #tokens >= 1 then
             local type = tokens[1].type
             if type == 'variable' then

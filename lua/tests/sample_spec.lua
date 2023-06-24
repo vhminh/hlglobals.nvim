@@ -3,6 +3,9 @@ local Path = require('plenary.path')
 local describe = require('plenary.busted').describe
 local it = require('plenary.busted').it
 local hlglobals = require('hlglobals')
+local utils = require('tests.utils')
+
+local mocked_lsp = require('tests/mocked_lsp_server')
 
 local ns = vim.api.nvim_create_namespace('hlglobals')
 
@@ -39,99 +42,81 @@ local function extract_sample_files(lang)
   return relatives
 end
 
----@param _languages table<string>
-local function setup_treesitter(_languages)
+---@param languages table<string>
+local function setup_treesitter(languages)
   require('nvim-treesitter.configs').setup({
-    ensure_installed = _languages,
+    ensure_installed = languages,
   })
 end
 require('nvim-treesitter.install').ensure_installed_sync()
 
-local setup_lsp_client = (function()
-  local client_by_lang = {}
-  ---@param lang string
-  return function(lang)
-    if client_by_lang[lang] == nil then
-      local co = coroutine.running()
-      local capabilities = vim.lsp.protocol.make_client_capabilities()
-      local config = {
-        name = 'gopls',
-        cmd = { 'gopls' },
-        root_dir = Path:new(vim.loop.cwd(), resource_path, lang):absolute(),
-        capabilities = capabilities,
-        on_init = function(client)
-          print(vim.inspect(client.server_capabilities.semanticTokensProvider))
-          if not client.server_capabilities.semanticTokensProvider then
-            local semantic = client.config.capabilities.textDocument.semanticTokens
-            client.server_capabilities.semanticTokensProvider = {
-              full = true,
-              legend = { tokenModifiers = semantic.tokenModifiers, tokenTypes = semantic.tokenTypes },
-              range = true,
-            }
-          end
-          assert(coroutine.resume(co, client))
-        end,
-        handlers = {},
-        settings = {
-          enableSemanticHighlighting = true,
-          ['gopls'] = {
-            semanticTokens = true,
-          },
-        },
-      }
+-- Mock a lsp client based on the source code
+---@param name string name of the lsp, should be unique
+---@param var_positions table<TokenPos> positions of variable token
+---@return number|nil client_id
+local mock_lsp_client = function(name, var_positions)
+  local capabilities = vim.lsp.protocol.make_client_capabilities()
+  local config = {
+    name = name,
+    cmd = mocked_lsp.mock_server(var_positions),
+    capabilities = capabilities,
+  }
+  return vim.lsp.start(config)
+end
 
-      local function lookup_section(settings, section)
-        for part in vim.gsplit(section, '.', true) do
-          settings = settings[part]
-          if not settings then
-            return
-          end
-        end
-        return settings
-      end
-
-      config.handlers['workspace/configuration'] = function(err, method, params, client_id)
-        if err then
-          error(tostring(err))
-        end
-        if not params.items then
-          return {}
-        end
-
-        local result = {}
-        for _, item in ipairs(params.items) do
-          if item.section then
-            local value = lookup_section(config.settings, item.section) or vim.NIL
-            -- For empty sections with no explicit '' key, return settings as is
-            if value == vim.NIL and item.section == '' then
-              value = config.settings or vim.NIL
-            end
-            table.insert(result, value)
-          end
-        end
-        return result
-      end
-
-      client_by_lang[lang] = vim.lsp.start(config)
-      local client = coroutine.yield()
-      client_by_lang[lang] = client
-    end
-    return client_by_lang[lang]
+-- Return a token length on a `line` starting at `start`
+---@param line string
+---@param start integer 0-indexed
+---@return integer token_length
+local function token_length(line, start)
+  local count = 0
+  while start + count <= #line and utils.is_alpha_numeric(string.sub(line, start + count + 1, start + count + 1)) do
+    count = count + 1
   end
-end)()
+  return count
+end
+
+---@param lines table<table<string>> source code
+---@return table<TokenPos> variable_positions list of 0-indexed [[line, col]]
+local function extract_variable(lines)
+  local vars = {}
+  for i = 1, #lines do
+    local line = lines[i]
+    local indices = utils.gfind(line, '^^', true)
+    for _, index in ipairs(indices) do
+      vars[#vars + 1] = {
+        line = i - 2, -- `^^` is 1 line below the actual variable
+        col = index - 1,
+        length = token_length(lines[i - 1], index - 1),
+      }
+    end
+  end
+  return vars
+end
+
+---@param lines table<table<string>> source code
+---@return table<TokenPos> positions list of 0-indexed [[line, col]]
+local function extract_expected_globals(lines)
+  local vars = {}
+  for i = 1, #lines do
+    local line = lines[i]
+    local indices = utils.gfind(line, '^^here', true)
+    for _, index in ipairs(indices) do
+      vars[#vars + 1] = {
+        line = i - 2, -- `^^here` is 1 line below the actual global var
+        col = index - 1,
+        length = token_length(lines[i - 1], index - 1),
+      }
+    end
+  end
+  return vars
+end
 
 local languages = extract_languages()
 setup_treesitter(languages)
 
 ---@param lang string
 local function setup_tests(lang)
-  local client = setup_lsp_client(lang)
-  -- vim.wait(1000)
-  -- local bufnr = vim.api.nvim_create_buf(true, true)
-  -- assert(bufnr ~= 0)
-  -- vim.api.nvim_buf_set_option(bufnr, 'filetype', lang)
-  -- -- vim.api.nvim_buf_set_option(bufnr, 'readonly', true)
-  -- vim.lsp.buf_attach_client(bufnr, assert(client.id))
   describe(lang, function()
     for _, test_file in ipairs(extract_sample_files(lang)) do
       it(test_file, function()
@@ -140,34 +125,38 @@ local function setup_tests(lang)
         local content = path:read()
         local lines = vim.split(content, '\n')
 
-        -- create a new buffer with correct filetype and insert the file content
-        local bufnr = vim.api.nvim_create_buf(true, true)
-        assert(bufnr ~= 0)
+        -- create empty buffer
+        local bufnr = assert(vim.api.nvim_create_buf(true, true))
         vim.api.nvim_buf_set_option(bufnr, 'filetype', lang)
-        vim.api.nvim_buf_set_option(bufnr, 'readonly', true)
-        --vim.api.nvim_buf_set_name(bufnr, path:absolute())
+
+        -- attach lsp client to buffer
+        local client_id = assert(mock_lsp_client('mocked-lsp-for-' .. lang, extract_variable(lines)))
+        vim.lsp.buf_attach_client(bufnr, client_id)
+        vim.lsp.semantic_tokens.start(bufnr, client_id)
+
+        -- insert file content
         vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
 
-        vim.wait(100)
-        -- attach lsp client to buffer
-        vim.lsp.buf_attach_client(bufnr, assert(client.id))
-        vim.wait(100)
-        vim.lsp.semantic_tokens.force_refresh(bufnr)
-
-        print(vim.inspect(vim.api.nvim_buf_get_lines(bufnr, 0, -1, true)))
-
-        vim.wait(1000)
         -- highlight
+        vim.wait(6)
         hlglobals.enable(bufnr)
 
         -- assertions
+        local expected_globals = vim.tbl_map(function(token_pos)
+          return {
+            line = token_pos.line,
+            col = token_pos.col,
+          }
+        end, extract_expected_globals(lines))
         local marks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {})
-        print(vim.inspect(marks))
-        -- for _, mark in ipairs(marks) do
-        --   print(mark)
-        --   vim.api.nvim_buf_del_extmark(bufnr, ns, mark[1])
-        -- end
-        assert.are.equal(1, 1)
+        local highlighted = {}
+        for _, mark in ipairs(marks) do
+          highlighted[#highlighted + 1] = {
+            line = mark[2],
+            col = mark[3],
+          }
+        end
+        assert.are.same(expected_globals, highlighted)
       end)
     end
   end)

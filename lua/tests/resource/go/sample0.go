@@ -4,10 +4,9 @@ package hlglobals
 // global variable usage should be highlighted
 
 var msg = "Hello, world"
-//  ^here
+//  ^^here
 
 func f() {
-//   ^
     println(msg)
-//  ^       ^{here}
+//          ^^here
 }
