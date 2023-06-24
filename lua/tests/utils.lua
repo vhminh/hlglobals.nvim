@@ -5,11 +5,11 @@ local M = {}
 ---@field col integer 0-indexed
 ---@field length integer
 
--- Find all ocurrence of pattern inside str
+-- Find all ocurrence of `pattern` inside `str`
 ---@param str string
 ---@param pattern string
 ---@param plain boolean?
----@return table<integer> start_indices
+---@return table<integer> start_indices list of 1-indexed indices at which the `pattern` starts in `str`
 function M.gfind(str, pattern, plain)
   local pat_start, pat_end
   local start = 1

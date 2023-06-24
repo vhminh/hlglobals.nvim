@@ -4,14 +4,12 @@ local describe = require('plenary.busted').describe
 local it = require('plenary.busted').it
 local hlglobals = require('hlglobals')
 local utils = require('tests.utils')
-
-local mocked_lsp = require('tests/mocked_lsp_server')
+local mock_server = require('tests/lsp_server').mock_server
 
 local ns = vim.api.nvim_create_namespace('hlglobals')
-
 local resource_path = 'lua/tests/resource'
 
--- First level directories in resource folder are language names
+-- First level directories in the resource folder are language names
 ---@return table<string>
 local function extract_languages()
   local finder = Job:new({
@@ -27,6 +25,7 @@ local function extract_languages()
   end, tails)
 end
 
+-- Every file in resource/{lang} are samples for that language
 ---@param lang string
 ---@return table<string>
 local function extract_sample_files(lang)
@@ -51,15 +50,13 @@ local function setup_treesitter(languages)
   require('nvim-treesitter.install').ensure_installed_sync()
 end
 
--- Mock a lsp client based on the source code
----@param name string name of the lsp, should be unique
+-- Mock a lsp client with these predefined semantic tokens
 ---@param var_positions table<TokenPos> positions of variable token
 ---@return number|nil client_id
-local mock_lsp_client = function(name, var_positions)
+local mock_lsp_client = function(var_positions)
   local capabilities = vim.lsp.protocol.make_client_capabilities()
   local config = {
-    name = name,
-    cmd = mocked_lsp.mock_server(var_positions),
+    cmd = mock_server(var_positions),
     capabilities = capabilities,
   }
   return vim.lsp.start(config)
@@ -77,7 +74,9 @@ local function token_length(line, start)
   return count
 end
 
----@param lines table<table<string>> source code
+-- Extract variable from sample source code
+-- Each variable token is indicated by `^^` in the next row
+---@param lines table<table<string>> source code as lines
 ---@return table<TokenPos> variable_positions list of 0-indexed [[line, col]]
 local function extract_variable(lines)
   local vars = {}
@@ -95,7 +94,9 @@ local function extract_variable(lines)
   return vars
 end
 
----@param lines table<table<string>> source code
+-- Extract expected global var from sample source code that needs to be highlighted
+-- Each expected global variable is indicated by `^^here` in the next row
+---@param lines table<table<string>> source code as lines
 ---@return table<TokenPos> positions list of 0-indexed [[line, col]]
 local function extract_expected_globals(lines)
   local vars = {}
@@ -131,7 +132,7 @@ local function setup_tests(lang)
         vim.api.nvim_buf_set_option(bufnr, 'filetype', lang)
 
         -- attach lsp client to buffer
-        local client_id = assert(mock_lsp_client('mocked-lsp-for-' .. lang, extract_variable(lines)))
+        local client_id = assert(mock_lsp_client(extract_variable(lines)))
         vim.lsp.buf_attach_client(bufnr, client_id)
         vim.lsp.semantic_tokens.start(bufnr, client_id)
 

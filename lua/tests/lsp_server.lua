@@ -1,6 +1,7 @@
 local M = {}
 
 -- Encode positions into a byte array
+-- See `Integer Encoding for Tokens` section in the lsp spec
 -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens
 ---@param positions table<TokenPos>
 ---@return table<integer> data
@@ -22,6 +23,7 @@ local function encode_token_positions(positions)
   return data
 end
 
+-- Mock a lsp server with these predefined semantic tokens
 ---@param var_sem_tokens table<TokenPos> list of semantic tokens of type variable
 function M.mock_server(var_sem_tokens)
   ---@param dispatchers table
