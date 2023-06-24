@@ -31,7 +31,7 @@ function M.mock_server(var_sem_tokens)
     local srv = {}
 
     ---@diagnostic disable-next-line: unused-local
-    function srv.request(method, params, callback)
+    function srv.request(method, params, callback) --luacheck: no unused args
       if method == 'initialize' then
         local capabilities = {
           semanticTokensProvider = {
@@ -54,7 +54,7 @@ function M.mock_server(var_sem_tokens)
     end
 
     ---@diagnostic disable-next-line: unused-local
-    function srv.notify(method, params)
+    function srv.notify(method, params) --luacheck: no unused args
       if method == 'exit' then
         dispatchers.on_exit(0, 15)
       end

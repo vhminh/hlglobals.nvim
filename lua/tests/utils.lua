@@ -11,8 +11,7 @@ local M = {}
 ---@param plain boolean?
 ---@return table<integer> start_indices
 function M.gfind(str, pattern, plain)
-  local pat_start = nil
-  local pat_end = nil
+  local pat_start, pat_end
   local start = 1
   local indices = {}
   repeat
