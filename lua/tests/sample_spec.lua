@@ -46,6 +46,7 @@ end
 local function setup_treesitter(languages)
   require('nvim-treesitter.configs').setup({
     ensure_installed = languages,
+    sync_install = true,
   })
   require('nvim-treesitter.install').ensure_installed_sync()
 end
