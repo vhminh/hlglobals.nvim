@@ -159,6 +159,9 @@ local function setup_tests(lang)
           }
         end
         assert.are.same(expected_globals, highlighted)
+
+        -- stop lsp client
+        vim.lsp.stop_client(client_id)
       end)
     end
   end)
