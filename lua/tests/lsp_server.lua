@@ -7,9 +7,10 @@ local M = {}
 ---@return table<integer> data
 local function encode_token_positions(positions)
   local data = {}
+  local last_line = 0
   for _, pos in ipairs(positions) do
-    local last_line = data[#data - 4] or 0
     local relative_line = pos.line - last_line
+    last_line = pos.line
     local last_col = data[#data - 3] or 0
     local relative_col = relative_line == 0 and pos.col - last_col or pos.col
     vim.list_extend(data, {
@@ -51,6 +52,8 @@ function M.mock_server(var_sem_tokens)
         callback(nil, nil)
       elseif method == 'textDocument/semanticTokens/full' then
         callback(nil, { data = encode_token_positions(var_sem_tokens) })
+      else
+        print('mock_server: unhandled method ' .. method, vim.inspect(params))
       end
       return true, 1
     end
