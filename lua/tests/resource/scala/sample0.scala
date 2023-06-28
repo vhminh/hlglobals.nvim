@@ -5,7 +5,7 @@ object Main {
 //    ^^here
 
   def main(args: Array[String]): Unit = {
-//         ^TODO: fix here, currently all variables are considered global
+//         ^ ^TODO: ignored, currently focusing on support golang first
     print(s"Hello $name")
 //                 ^^here
   }

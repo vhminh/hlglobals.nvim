@@ -1,3 +1,5 @@
+local Query = require('hlglobals.query')
+
 local M = {}
 
 local ns = vim.api.nvim_create_namespace('hlglobals')
@@ -43,12 +45,69 @@ local find_variables = function(bufnr)
   return iter
 end
 
--- Check if a variable is declared in outer scope
----@param node TSNode: the node of type Identifier representing the variable
+---@param node TSNode current node
+---@return TSNode? result previous sibling or parent if there isn't one
+local function prev_sibling_or_parent(node)
+  if not node then
+    return nil
+  end
+  local prev = node:prev_named_sibling()
+  if prev == nil then
+    return node:parent()
+  end
+  return prev
+end
+
+local function extract_var_declarations_in_func(bufnr, fn_node)
+  local vars_declared = {}
+  local query = Query.new(bufnr, 'declaration')
+  for stmt_node in query.iter(fn_node, 'statement') do
+    for var_name_node in query.iter(stmt_node, 'name') do
+      local var_name = vim.treesitter.get_node_text(var_name_node, bufnr)
+      vars_declared[stmt_node:id()] = vars_declared[stmt_node:id()] or {}
+      vim.list_extend(vars_declared[stmt_node:id()], { var_name })
+    end
+  end
+  return vars_declared
+end
+
+---@param node TSNode
 ---@return boolean
----@diagnostic disable-next-line: unused-local
-local function is_declared_in_outer_scope(node) --luacheck: no unused args
-  return true
+local function is_function(node)
+  return node:type() == 'function_declaration'
+end
+
+---@param node TSNode
+---@return TSNode? fn_node node of the function containing this `node`
+local function get_enclosing_function(node)
+  local parent = node
+  while parent and not is_function(parent) do
+    parent = parent:parent()
+  end
+  return parent
+end
+
+-- Check if a variable is declared in function scope
+---@param bufnr number buffer number
+---@param node TSNode the node of type Identifier representing the variable
+---@return boolean
+local function is_declared_in_fn_scope(bufnr, node)
+  ---@type TSNode?
+  local fn = get_enclosing_function(node)
+  if not fn then
+    return false
+  end
+  local vars_declared = extract_var_declarations_in_func(bufnr, fn)
+  local node_text = vim.treesitter.get_node_text(node, bufnr)
+  ---@type TSNode?
+  local prev = node
+  while prev and prev:id() ~= fn:id() do
+    if vim.tbl_contains(vars_declared[prev:id()] or {}, node_text) then
+      return true
+    end
+    prev = prev_sibling_or_parent(prev)
+  end
+  return false
 end
 
 ---@param bufnr number
@@ -68,7 +127,7 @@ end
 ---@param bufnr number
 local function hl_buf(bufnr)
   for var_node in find_variables(bufnr) do
-    if is_declared_in_outer_scope(var_node) then
+    if not is_declared_in_fn_scope(bufnr, var_node) then
       hl_node(bufnr, var_node)
     end
   end
