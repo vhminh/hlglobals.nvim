@@ -68,7 +68,7 @@ end
 ---@param node TSNode
 ---@return boolean
 local function is_function(node)
-  return node:type() == 'function_declaration'
+  return vim.tbl_contains({ 'function_declaration', 'func_literal' }, node:type())
 end
 
 ---@param node TSNode
