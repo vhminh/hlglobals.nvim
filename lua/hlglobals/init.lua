@@ -58,6 +58,10 @@ local function prev_sibling_or_parent(node)
   return prev
 end
 
+---@param bufnr integer
+---@param fn_node TSNode
+---@return table<string, table<string>> var_names_declared_in_stmt a mapping from var declaration statement (TSNode id)
+--  to a list of variable names that are declared within that statement
 local function extract_var_declarations_in_func(bufnr, fn_node)
   local vars_declared = {}
   local query = Query.new(bufnr, 'declaration')
@@ -97,7 +101,7 @@ local function is_declared_in_fn_scope(bufnr, node)
   if not fn then
     return false
   end
-  local vars_declared = extract_var_declarations_in_func(bufnr, fn)
+  local vars_declared = extract_var_declarations_in_func(bufnr, fn) -- TODO: this can be cached
   local node_text = vim.treesitter.get_node_text(node, bufnr)
   ---@type TSNode?
   local prev = node

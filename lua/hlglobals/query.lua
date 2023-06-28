@@ -10,6 +10,11 @@ function Query.new(bufnr, name)
     bufnr = bufnr,
   }
 
+  ---@param root TSNode
+  ---@param capture_name string
+  ---@param start integer|nil
+  ---@param stop integer|nil
+  ---@return fun(): TSNode|nil
   function self.iter(root, capture_name, start, stop)
     start = start or 0
     stop = stop or -1
