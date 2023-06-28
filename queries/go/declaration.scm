@@ -6,7 +6,6 @@
   left: (_
   (identifier) @name)) @statement
 
-(function_declaration
-  parameters: (parameter_list
-    (parameter_declaration
-      name: (identifier) @name)) @statement)
+(parameter_list
+  (parameter_declaration
+    name: (identifier) @name)) @statement

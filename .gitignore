@@ -41,3 +41,5 @@ luac.out
 
 # lsp
 **/.metals
+
+.DS_Store

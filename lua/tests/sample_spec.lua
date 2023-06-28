@@ -68,7 +68,7 @@ end
 ---@return integer token_length
 local function token_length(line, start)
   local count = 0
-  while start + count <= #line and utils.is_alpha_numeric(string.sub(line, start + count + 1, start + count + 1)) do
+  while start + count < #line and utils.is_alpha_numeric(string.sub(line, start + count + 1, start + count + 1)) do
     count = count + 1
   end
   return count
