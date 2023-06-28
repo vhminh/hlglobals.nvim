@@ -4,10 +4,6 @@ local M = {}
 
 local ns = vim.api.nvim_create_namespace('hlglobals')
 
-local function empty_iter()
-  return nil
-end
-
 -- Use treesitter and lsp semantic token to find variables in the buffer
 ---@param bufnr number
 ---@return (fun(): TSNode)
