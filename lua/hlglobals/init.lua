@@ -14,33 +14,27 @@ end
 local find_variables = function(bufnr)
   local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
   local lang = assert(vim.treesitter.language.get_lang(filetype))
-  local query = vim.treesitter.query.get(lang, 'variable')
-  if query == nil then
-    vim.notify_once(string.format('Unable to load "variable" query for %s', lang), vim.log.levels.ERROR)
-    return empty_iter
-  end
   local tree = vim.treesitter.get_parser(bufnr, lang):parse()[1]
-  local node_iter = query:iter_matches(tree:root(), bufnr, 0, -1)
+
+  local query = Query.new(bufnr, 'variable')
+  local node_iter = query.iter(tree:root(), 'variable', 0, -1)
   local function iter()
-    local _, match = node_iter()
-    if match ~= nil then
-      for id, node in pairs(match) do
-        local name = query.captures[id]
-        if name == 'variable' then
-          -- treesitter Identifier node
-          local row, col = node:start()
-          local tokens = vim.lsp.semantic_tokens.get_at_pos(bufnr, row, col)
-          if tokens ~= nil and #tokens >= 1 then
-            local type = tokens[1].type
-            if type == 'variable' then
-              -- lsp variable semantic token
-              return node
-            end
-          end
-        end
-      end
-      return iter()
+    -- get next treesitter identifier node
+    local var_node = node_iter()
+    if var_node == nil then
+      return nil
     end
+    local row, col = var_node:start()
+    -- query lsp semantic token to check if that identifier is a variable
+    local tokens = vim.lsp.semantic_tokens.get_at_pos(bufnr, row, col)
+    if tokens ~= nil and #tokens >= 1 then
+      local type = tokens[1].type
+      if type == 'variable' then
+        return var_node
+      end
+    end
+    -- if it is not a variable, call iter() to continue checking the next treesitter node
+    return iter()
   end
   return iter
 end
