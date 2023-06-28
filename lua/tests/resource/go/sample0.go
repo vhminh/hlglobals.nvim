@@ -6,7 +6,7 @@ package hlglobals
 var msg = "Hello, world"
 //  ^^here
 
-func f() {
+func main() {
     println(msg)
 //          ^^here
 }
