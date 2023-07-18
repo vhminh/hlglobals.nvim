@@ -1,13 +1,22 @@
+---@class Query
+---@field bufnr integer
+---@field filetype string
+---@field lang string
+---@field iter fun(root: TSNode, capture_name: string, start: integer|nil, stop: integer|nil): (fun(): TSNode|nil)
 local Query = {}
 
+---@param bufnr number
+---@param name string name of the query to load
+---@return Query
 function Query.new(bufnr, name)
   local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
   local lang = assert(vim.treesitter.language.get_lang(filetype))
   local query = assert(vim.treesitter.query.get(lang, name))
 
   local self = {
-    lang = lang,
     bufnr = bufnr,
+    filetype = filetype,
+    lang = lang,
   }
 
   ---@param root TSNode
