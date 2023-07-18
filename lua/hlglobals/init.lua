@@ -1,5 +1,6 @@
 local Highlighter = require('hlglobals.highlighter')
 local Opts = require('hlglobals.opts')
+local throttle = require('hlglobals.throttle')
 
 local M = {}
 
@@ -62,6 +63,7 @@ function M.disable(bufnr)
   clear_hl_buf(bufnr)
 end
 
+---@param bufnr number?
 function M.toggle(bufnr)
   ensure_setup()
   bufnr = bufnr or vim.fn.bufnr()
@@ -71,5 +73,30 @@ function M.toggle(bufnr)
     M.enable(bufnr)
   end
 end
+
+---@param bufnr number
+local function update_hightlighter(bufnr)
+  local current_highlighter = highlighters[bufnr]
+  if current_highlighter == nil then
+    return
+  end
+  local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
+  if current_highlighter.filetype == filetype then
+    return
+  end
+  current_highlighter.detach()
+  highlighters[bufnr] = Highlighter.new(bufnr)
+end
+
+---@param bufnr number
+M.update = throttle(function(bufnr)
+  ensure_setup()
+  update_hightlighter(bufnr)
+  if M.is_enabled(bufnr) then
+    hl_buf(bufnr)
+  else
+    clear_hl_buf(bufnr)
+  end
+end)
 
 return M
