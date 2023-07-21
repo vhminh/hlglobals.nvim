@@ -9,3 +9,7 @@
 (parameter_list
   (parameter_declaration
     name: (identifier) @name)) @statement
+
+(range_clause
+  left: (_
+  (identifier) @name)) @statement
