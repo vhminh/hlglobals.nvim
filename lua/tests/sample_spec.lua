@@ -167,6 +167,7 @@ local function setup_tests(lang)
   end)
 end
 
+require('hlglobals').setup({ enabled = true })
 for _, lang in ipairs(languages) do
   setup_tests(lang)
 end
