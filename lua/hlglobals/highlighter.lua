@@ -6,10 +6,12 @@ local Query = require('hlglobals.query')
 ---@field lang string
 ---@field hl_buf fun()
 ---@field clear_hl_buf fun()
+---@field detach fun() the function to be called when the highlighter detaches from buffer
 local Highlighter = {}
 
 local ns = vim.api.nvim_create_namespace('hlglobals')
 
+-- Create a highlighter and attach to the buffer
 ---@param bufnr number
 ---@return Highlighter
 function Highlighter.new(bufnr, opts)
@@ -115,7 +117,9 @@ function Highlighter.new(bufnr, opts)
     end
     return parent
   end
+
   function self.hl_buf()
+    self.clear_hl_buf()
     for var_node in self.find_variables() do
       if not self.is_declared_in_fn_scope(var_node) then
         self.hl_node(var_node)
@@ -141,6 +145,10 @@ function Highlighter.new(bufnr, opts)
     for _, mark in ipairs(marks) do
       vim.api.nvim_buf_del_extmark(bufnr, ns, mark[1])
     end
+  end
+
+  function self.detach()
+    self.clear_hl_buf()
   end
 
   return self
