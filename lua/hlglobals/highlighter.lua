@@ -25,30 +25,55 @@ function Highlighter.new(bufnr, opts)
   local var_query = Query.new(bufnr, 'variable')
   local decl_query = Query.new(bufnr, 'declaration')
 
-  -- Use treesitter and lsp semantic token to find variables in the buffer
-  ---@return (fun(): TSNode)
-  function self.find_variables()
-    local tree = vim.treesitter.get_parser(bufnr, self.lang):parse()[1]
-
-    local node_iter = var_query.iter(tree:root(), 'variable')
-    local function iter()
-      -- get next treesitter identifier node
-      local var_node = node_iter()
-      if var_node == nil then
-        return nil
-      end
-      local row, col = var_node:start()
-      -- query lsp semantic token to check if that identifier is a variable
+  -- Check if the given identifier node is a variable
+  -- TODO: language specific function, need refactoring
+  ---@param ident_node TSNode
+  ---@return boolean
+  local function is_var_node(ident_node)
+    local function check_lsp_semantic_token(node)
+      local row, col = node:start()
       local tokens = vim.lsp.semantic_tokens.get_at_pos(bufnr, row, col)
       if tokens ~= nil and #tokens >= 1 then
         local type = tokens[1].type
         if type == 'variable' then
-          return var_node
+          return true
         end
       end
-      -- if it is not a variable, call iter() to continue checking the next treesitter node
-      return iter()
+      return false
     end
+    ---@param node TSNode
+    local function is_keyed_element(node)
+      local parent = node:parent()
+      if not parent then
+        return false
+      end
+      local grandparent = parent:parent()
+      if not grandparent then
+        return false
+      end
+      local is_first_keyed_element = grandparent:named_children()[1]:id() == parent:id()
+      return is_first_keyed_element and parent:type() == 'literal_element' and grandparent:type() == 'keyed_element'
+    end
+    return check_lsp_semantic_token(ident_node) and not is_keyed_element(ident_node)
+  end
+
+  -- Use treesitter and lsp semantic token to find variables in the buffer
+  ---@return (fun(): TSNode)
+  function self.find_variables()
+    local tree = vim.treesitter.get_parser(bufnr, self.lang):parse()[1]
+    local ident_iter = var_query.iter(tree:root(), 'ident')
+
+    local function iter()
+      local ident_node = ident_iter()
+      if ident_node == nil then
+        return nil
+      end
+      if not is_var_node(ident_node) then
+        return iter()
+      end
+      return ident_node
+    end
+
     return iter
   end
 
@@ -102,6 +127,7 @@ function Highlighter.new(bufnr, opts)
     return vars_declared
   end
 
+  -- TODO: language specific function, need refactoring
   ---@param node TSNode
   ---@return boolean
   local function is_function(node)

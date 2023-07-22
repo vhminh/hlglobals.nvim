@@ -1,1 +1,1 @@
-(identifier) @variable
+(identifier) @ident
