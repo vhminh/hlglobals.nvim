@@ -11,6 +11,20 @@ local Highlighter = {}
 
 local ns = vim.api.nvim_create_namespace('hlglobals')
 
+---@generic K, V
+---@param cache any
+---@param key K
+---@param callback fun(key: K): V
+---@return V
+local function with_cache(cache, key, callback)
+  if cache[key] ~= nil then
+    return cache[key]
+  end
+  local value = callback(key)
+  cache[key] = value
+  return value
+end
+
 -- Create a highlighter and attach to the buffer
 ---@param bufnr number
 ---@return Highlighter
@@ -24,6 +38,11 @@ function Highlighter.new(bufnr, opts)
   }
   local var_query = Query.new(bufnr, 'variable')
   local decl_query = Query.new(bufnr, 'declaration')
+
+  local var_decl_by_fn = {}
+  local function clear_cache()
+    var_decl_by_fn = {}
+  end
 
   -- Check if the given identifier node is a variable
   -- TODO: language specific function, need refactoring
@@ -86,7 +105,9 @@ function Highlighter.new(bufnr, opts)
     if not fn then
       return false
     end
-    local vars_declared = self.extract_var_declarations_in_func(fn) -- TODO: this can be cached
+    local vars_declared = with_cache(var_decl_by_fn, fn:id(), function()
+      return self.extract_var_declarations_in_func(fn)
+    end)
     local node_text = vim.treesitter.get_node_text(node, bufnr)
     ---@type TSNode?
     local prev = node
@@ -167,6 +188,7 @@ function Highlighter.new(bufnr, opts)
   end
 
   function self.clear_hl_buf()
+    clear_cache()
     local marks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {})
     for _, mark in ipairs(marks) do
       vim.api.nvim_buf_del_extmark(bufnr, ns, mark[1])
