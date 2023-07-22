@@ -105,7 +105,7 @@ function Highlighter.new(bufnr, opts)
   ---@param node TSNode
   ---@return boolean
   local function is_function(node)
-    return vim.tbl_contains({ 'function_declaration', 'func_literal' }, node:type())
+    return vim.tbl_contains({ 'function_declaration', 'method_declaration', 'func_literal' }, node:type())
   end
 
   ---@param node TSNode
