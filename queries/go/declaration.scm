@@ -14,6 +14,11 @@
   (parameter_declaration
     name: (identifier) @name)) @statement
 
+(for_clause
+  initializer: (short_var_declaration
+    left: (expression_list
+      (identifier) @name))) @statement
+
 (range_clause
   left: (_
   (identifier) @name)) @statement
